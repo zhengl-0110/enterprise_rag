@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from core import load_and_split_document, build_vector_store, stream_rag_response
+from langchain_core.messages import AIMessage, HumanMessage
 
 # 设置页面标题
 st.set_page_config(page_title="小雷的 AI 知识库助手", page_icon="🤖")
@@ -61,18 +62,47 @@ if uploaded_file:
     st.divider()
 
     # 3. 问答交互区 (保持不变)
+    # 初始化对话历史 (如果不存在的话)
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # 🌟 关键：每次刷新页面，都要把历史聊天记录重新画出来
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+    
+    # 处理用户输入
     prompt = st.chat_input("在这个文档里找什么？")
     
     if prompt:
+        # 1. 显示用户提问
         with st.chat_message("user"):
-            st.write(prompt)
+            st.markdown(prompt)
+        # 记入历史
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
+        # 2. 准备传给后端的 history
+        # 将 session_state 里的简单字典转换为 LangChain 的 Message 对象
+        chat_history = []
+        for msg in st.session_state.messages[:-1]: # 不包含当前这一句最新的
+            if msg["role"] == "user":
+                chat_history.append(HumanMessage(content=msg["content"]))
+            else:
+                chat_history.append(AIMessage(content=msg["content"]))
+
+        # 3. 生成回答
         if "vector_store" in st.session_state:
             with st.chat_message("assistant"):
-                # 使用流式输出
+                # 🌟 传入 chat_history
                 response = st.write_stream(
-                    stream_rag_response(prompt, st.session_state["vector_store"])
+                    stream_rag_response(
+                        prompt, 
+                        st.session_state["vector_store"], 
+                        chat_history
+                    )
                 )
+            # 记入历史
+            st.session_state.messages.append({"role": "assistant", "content": response})
         else:
             st.error("请先等待知识库构建完成。")
 

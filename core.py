@@ -7,8 +7,9 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from openai import APIConnectionError, RateLimitError 
+from operator import itemgetter
+# from langchain_core.runnables import RunnablePassthrough
+# from openai import APIConnectionError, RateLimitError 
 
 # 确保 config.py 和 prompts.py 存在
 from config import DOUBAO_API_KEY, DOUBAO_BASE_URL, MODEL_NAME, VECTOR_SEARCH_K
@@ -74,14 +75,8 @@ def build_vector_store(documents: List[Document]) -> FAISS:
 
 # --- 3. 内部流水线组装 (这里修复了报错的核心) ---
 def _get_rag_chain(vector_store: FAISS):
-    """
-    组装完整的 RAG 流水线：
-    Input(Query) -> Retriever(Context) + Query -> Prompt -> LLM -> Output
-    """
-    # 1. 检索器
     retriever = vector_store.as_retriever(search_kwargs={"k": VECTOR_SEARCH_K})
     
-    # 2. 模型
     llm = ChatOpenAI(
         temperature=0.1,
         base_url=DOUBAO_BASE_URL,
@@ -89,14 +84,18 @@ def _get_rag_chain(vector_store: FAISS):
         model=MODEL_NAME,
     )
     
-    # 3. 提示词
     prompt = get_rag_prompt()
     
-    # 4. 🔗 链条组装 (LCEL)
-    # ❌ 之前的报错是因为这里漏掉了最前面的字典映射
+    # 🌟 核心修改：链条的输入现在需要处理 chat_history
+    # 这里的 lambda x: x["chat_history"] 意思是：
+    # 当外部调用 chain.invoke({"question": "...", "chat_history": [...]}) 时
+    # 自动把 chat_history 提取出来传给 prompt 里的 MessagesPlaceholder
     rag_chain = (
-        # 下面这个字典就是把 user query 变成 prompt 需要的 context 和 question
-        {"context": retriever, "question": RunnablePassthrough()}
+        {
+            "context": itemgetter("question") | retriever, 
+            "question": itemgetter("question"),
+            "chat_history": itemgetter("chat_history"),
+        }
         | prompt
         | llm
         | StrOutputParser()
@@ -114,12 +113,15 @@ def generate_rag_response(query: str, vector_store: FAISS) -> str:
         return f"出错了: {e}"
 
 # --- 5. 流式生成 (Web 用) ---
-def stream_rag_response(query: str, vector_store: FAISS) -> Generator[str, None, None]:
+def stream_rag_response(query: str, vector_store: FAISS, chat_history: List[dict]) -> Generator[str, None, None]:
     logger.info("正在调用 API (流式)...")
     try:
         chain = _get_rag_chain(vector_store)
-        # 这里的 query 是字符串，上面的 chain 会自动把它变成字典
-        for chunk in chain.stream(query):
+        # 🌟 调用时传入字典，包含 question 和 chat_history
+        for chunk in chain.stream({
+            "question": query,
+            "chat_history": chat_history
+        }):
             yield chunk
     except Exception as e:
         logger.error(f"流式失败: {e}")

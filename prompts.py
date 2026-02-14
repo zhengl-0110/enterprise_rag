@@ -1,12 +1,22 @@
 # 想优化回答效果，只要改 prompts.py
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-# 基础 RAG 问答模板
-RAG_SYSTEM_TEMPLATE = """Answer the question based only on the following context:
+# 🌟 新增：多轮对话的 System Prompt
+# 我们显式地加了一个 {chat_history} 的占位符
+RAG_SYSTEM_TEMPLATE = """You are a helpful assistant. 
+Answer the question based only on the following context. 
+If the context is in English but the question is in Chinese, please translate the relevant information and answer in Chinese.
+
+Context:
 {context}
-
-Question: {question}
 """
 
 def get_rag_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_template(RAG_SYSTEM_TEMPLATE)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", RAG_SYSTEM_TEMPLATE),
+        # 🌟 关键点：这里是放历史记录的地方
+        # 它可以是一长串的 HumanMessage, AIMessage 对象
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{question}"),
+    ])
+    return prompt
