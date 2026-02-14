@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from core import load_and_split_document, build_vector_store, stream_rag_response
 from langchain_core.messages import AIMessage, HumanMessage
+from prompts import PERSONAS
 
 # 设置页面标题
 st.set_page_config(page_title="小雷的 AI 知识库助手", page_icon="🤖")
@@ -15,6 +16,19 @@ with st.sidebar:
         "请上传文件 (支持 PDF, Word, TXT, MD)", 
         type=["pdf", "txt", "docx", "md"]
     )
+
+    # 🌟 新增：人设选择器
+    st.header("🎭 AI 人设")
+    selected_persona_name = st.selectbox(
+        "选择回答风格",
+        options=list(PERSONAS.keys()), # 获取所有 key
+        index=0 # 默认选中第一个
+    )
+    # 获取对应的 Prompt 文本
+    selected_prompt_text = PERSONAS[selected_persona_name]
+    
+    st.divider()
+
     # 增加一个重置按钮
     if st.button("清除历史"):
         # 清除所有缓存
@@ -61,7 +75,7 @@ if uploaded_file:
 
     st.divider()
 
-    # 3. 问答交互区 (保持不变)
+    # 3. 问答交互区 
     # 初始化对话历史 (如果不存在的话)
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -93,12 +107,13 @@ if uploaded_file:
         # 3. 生成回答
         if "vector_store" in st.session_state:
             with st.chat_message("assistant"):
-                # 🌟 传入 chat_history
+                # 🌟 核心修改：把选中的 selected_prompt_text 传进去
                 response = st.write_stream(
                     stream_rag_response(
                         prompt, 
                         st.session_state["vector_store"], 
-                        chat_history
+                        chat_history,
+                        selected_prompt_text # <--- 传这个！
                     )
                 )
             # 记入历史

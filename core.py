@@ -74,22 +74,19 @@ def build_vector_store(documents: List[Document]) -> FAISS:
     return db
 
 # --- 3. 内部流水线组装 (这里修复了报错的核心) ---
-def _get_rag_chain(vector_store: FAISS):
+def _get_rag_chain(vector_store: FAISS, prompt_template: str):
     retriever = vector_store.as_retriever(search_kwargs={"k": VECTOR_SEARCH_K})
     
     llm = ChatOpenAI(
-        temperature=0.1,
+        temperature=0.3, # 稍微调高一点点，让幽默人设能发挥
         base_url=DOUBAO_BASE_URL,
         api_key=DOUBAO_API_KEY,
         model=MODEL_NAME,
     )
     
-    prompt = get_rag_prompt()
+    # 🌟 核心修改：使用传入的模板文本
+    prompt = get_rag_prompt(prompt_template)
     
-    # 🌟 核心修改：链条的输入现在需要处理 chat_history
-    # 这里的 lambda x: x["chat_history"] 意思是：
-    # 当外部调用 chain.invoke({"question": "...", "chat_history": [...]}) 时
-    # 自动把 chat_history 提取出来传给 prompt 里的 MessagesPlaceholder
     rag_chain = (
         {
             "context": itemgetter("question") | retriever, 
@@ -113,11 +110,12 @@ def generate_rag_response(query: str, vector_store: FAISS) -> str:
         return f"出错了: {e}"
 
 # --- 5. 流式生成 (Web 用) ---
-def stream_rag_response(query: str, vector_store: FAISS, chat_history: List[dict]) -> Generator[str, None, None]:
+def stream_rag_response(query: str, vector_store: FAISS, chat_history: List[dict], prompt_template: str) -> Generator[str, None, None]:
     logger.info("正在调用 API (流式)...")
     try:
-        chain = _get_rag_chain(vector_store)
-        # 🌟 调用时传入字典，包含 question 和 chat_history
+        # 把 template 传给内部函数
+        chain = _get_rag_chain(vector_store, prompt_template)
+        
         for chunk in chain.stream({
             "question": query,
             "chat_history": chat_history
