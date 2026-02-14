@@ -1,4 +1,5 @@
 # core.py (Day 7 终极修正版)
+import os
 import logging
 from typing import List, Generator
 
@@ -18,13 +19,36 @@ logger = logging.getLogger(__name__)
 # --- 1. 加载函数 (保留了 chunk_size=1000 的优化) ---
 def load_and_split_document(file_path: str) -> List[Document]:
     logger.info(f"正在加载文档: {file_path}")
-    from langchain_community.document_loaders import PyMuPDFLoader
+    from langchain_community.document_loaders import (
+        PyMuPDFLoader, 
+        TextLoader, 
+        Docx2txtLoader,
+        UnstructuredMarkdownLoader
+    )
     from langchain_text_splitters import RecursiveCharacterTextSplitter
     
-    loader = PyMuPDFLoader(file_path)
+    # 1. 获取文件扩展名 (例如 .pdf, .txt)
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    # 2. 工厂模式：根据后缀选择加载器
+    if ext == ".pdf":
+        loader = PyMuPDFLoader(file_path)
+    elif ext == ".txt":
+        # encoding="utf-8" 很重要，防止中文乱码
+        loader = TextLoader(file_path, encoding="utf-8")
+    elif ext == ".docx":
+        loader = Docx2txtLoader(file_path)
+    elif ext == ".md":
+        loader = UnstructuredMarkdownLoader(file_path)
+    else:
+        # 遇到不支持的格式，抛出异常或者返回空
+        raise ValueError(f"不支持的文件格式: {ext}")
+    
+    # 3. 加载文档
     pages = loader.load_and_split()
     
-    # 🌟 关键点：这里保留了之前调试出的最佳参数
+    # 4. 切分文档 (保持 Day 7 的 1000/300 配置)
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000, 
         chunk_overlap=300, 

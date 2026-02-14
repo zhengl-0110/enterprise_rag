@@ -9,8 +9,11 @@ st.title("🤖 小雷的 AI 智能问答助手")
 # --- 侧边栏：文件上传区 ---
 with st.sidebar:
     st.header("📄 文档上传")
-    uploaded_file = st.file_uploader("请上传 PDF 文件", type=["pdf"])
-    
+    # 🌟 修改这里：增加 txt, docx, md 支持
+    uploaded_file = st.file_uploader(
+        "请上传文件 (支持 PDF, Word, TXT, MD)", 
+        type=["pdf", "txt", "docx", "md"]
+    )
     # 增加一个重置按钮
     if st.button("清除历史"):
         # 清除所有缓存
