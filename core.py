@@ -12,7 +12,7 @@ from operator import itemgetter
 # from openai import APIConnectionError, RateLimitError 
 
 # 确保 config.py 和 prompts.py 存在
-from config import DOUBAO_API_KEY, DOUBAO_BASE_URL, MODEL_NAME, VECTOR_SEARCH_K
+from config import MODEL_API_KEY, MODEL_BASE_URL, MODEL_NAME, VECTOR_SEARCH_K
 from prompts import get_rag_prompt
 
 logger = logging.getLogger(__name__)
@@ -79,8 +79,8 @@ def _get_rag_chain(vector_store: FAISS, prompt_template: str):
     
     llm = ChatOpenAI(
         temperature=0.3, # 稍微调高一点点，让幽默人设能发挥
-        base_url=DOUBAO_BASE_URL,
-        api_key=DOUBAO_API_KEY,
+        base_url=MODEL_BASE_URL,
+        api_key=MODEL_API_KEY,
         model=MODEL_NAME,
     )
     
