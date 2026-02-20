@@ -61,17 +61,52 @@ def load_and_split_document(file_path: str) -> List[Document]:
     return texts
 
 # --- 2. 建库函数 ---
-def build_vector_store(documents: List[Document]) -> FAISS:
+# core.py 的中间部分
+
+# 定义一个专门存数据的文件夹
+FAISS_DB_DIR = "faiss_index"
+
+# 🌟 改造：加上 save_name 参数，建完库直接存硬盘
+def build_vector_store(documents: List[Document], save_name: str) -> FAISS:
     logger.info("正在构建向量数据库...")
     from langchain_community.embeddings.dashscope import DashScopeEmbeddings
     import os
+    
+    # 确保保存目录存在
+    os.makedirs(FAISS_DB_DIR, exist_ok=True)
+    
     embeddings = DashScopeEmbeddings(
         model="text-embedding-v3", 
         dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")
     )
     db = FAISS.from_documents(documents, embeddings)
-    logger.info("向量数据库构建完毕")
+    
+    # 将向量库保存到本地文件夹
+    save_path = os.path.join(FAISS_DB_DIR, save_name)
+    db.save_local(save_path)
+    logger.info(f"向量数据库已永久保存至: {save_path}")
+    
     return db
+
+# 🌟 新增：从硬盘读取数据库的函数
+def load_vector_store(save_name: str):
+    import os
+    from langchain_community.embeddings.dashscope import DashScopeEmbeddings
+    
+    save_path = os.path.join(FAISS_DB_DIR, save_name)
+    
+    # 如果本地没有这个文件，就返回 None
+    if not os.path.exists(save_path):
+        return None
+        
+    logger.info(f"✨ 发现本地缓存，正在加载: {save_path}")
+    embeddings = DashScopeEmbeddings(
+        model="text-embedding-v3", 
+        dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")
+    )
+    
+    # allow_dangerous_deserialization=True 是必须加的安全确认，表示信任本地文件
+    return FAISS.load_local(save_path, embeddings, allow_dangerous_deserialization=True)
 
 # --- 3. 内部流水线组装 (这里修复了报错的核心) ---
 def _get_rag_chain(vector_store: FAISS, prompt_template: str):

@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from core import load_and_split_document, build_vector_store, stream_rag_response
+from core import load_and_split_document, build_vector_store, stream_rag_response, load_vector_store
 from langchain_core.messages import AIMessage, HumanMessage
 from prompts import PERSONAS
 
@@ -55,19 +55,28 @@ if uploaded_file:
     is_new_file = "current_file" not in st.session_state or st.session_state["current_file"] != uploaded_file.name
     
     if is_new_file:
-        with st.spinner(f"正在学习新文档: {uploaded_file.name} ..."):
+        with st.spinner(f"正在准备文档: {uploaded_file.name} ..."):
             try:
-                # 重新构建
-                docs = load_and_split_document(file_path)
-                vector_store = build_vector_store(docs)
+                # 🌟 2. 核心修改：先尝试从本地硬盘“读档”
+                vector_store = load_vector_store(uploaded_file.name)
                 
-                # 更新 session_state
+                # 🌟 3. 如果没读到档案，说明是新书，老老实实从头建库
+                if vector_store is None:
+                    st.info("首次阅读此文档，正在构建专属知识库 (这需要一点时间)...")
+                    docs = load_and_split_document(file_path)
+                    # 记得把文件名传给后厨
+                    vector_store = build_vector_store(docs, uploaded_file.name)
+                    st.success(f"✅ 新知识库构建完成并已缓存！包含 {len(docs)} 个片段。")
+                else:
+                    st.success("⚡ 发现本地知识库缓存，秒级加载成功！")
+
+                # 把就绪的库放进 session_state
                 st.session_state["vector_store"] = vector_store
-                st.session_state["current_file"] = uploaded_file.name # 👈 记住当前文件名
+                st.session_state["current_file"] = uploaded_file.name
+                st.session_state.messages = [] 
                 
-                st.success(f"✅ 新知识库构建完成！包含 {len(docs)} 个片段。")
             except Exception as e:
-                st.error(f"构建失败: {e}")
+                st.error(f"构建或加载失败: {e}")
     
     # 提示当前正在使用的文件
     elif "vector_store" in st.session_state:
