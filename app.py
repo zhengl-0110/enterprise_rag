@@ -4,83 +4,88 @@ from core import load_and_split_document, build_vector_store, stream_rag_respons
 from langchain_core.messages import AIMessage, HumanMessage
 from prompts import PERSONAS
 
-# 设置页面标题
+#1 设置页面标题
 st.set_page_config(page_title="小雷的 AI 知识库助手", page_icon="🤖")
 st.title("🤖 小雷的 AI 智能问答助手")
 
-# --- 侧边栏：文件上传区 ---
+#2 --- 侧边栏：文件上传区 ---
 with st.sidebar:
-    st.header("📄 文档上传")
-    # 🌟 修改这里：增加 txt, docx, md 支持
-    uploaded_file = st.file_uploader(
-        "请上传文件 (支持 PDF, Word, TXT, MD)", 
-        type=["pdf", "txt", "docx", "md"]
-    )
-
-    # 🌟 新增：人设选择器
-    st.header("🎭 AI 人设")
-    selected_persona_name = st.selectbox(
-        "选择回答风格",
-        options=list(PERSONAS.keys()), # 获取所有 key
-        index=0 # 默认选中第一个
-    )
-    # 获取对应的 Prompt 文本
-    selected_prompt_text = PERSONAS[selected_persona_name]
+    st.header("📚 知识库构建")
     
-    st.divider()
-
-    # 增加一个重置按钮
-    if st.button("清除历史"):
-        # 清除所有缓存
-        for key in ["vector_store", "current_file"]:
+    # 🌟 【改造 1】：开启 accept_multiple_files=True
+    uploaded_files = st.file_uploader(
+        "请上传文件 (支持多选：PDF, Word, TXT, MD)", 
+        type=["pdf", "txt", "docx", "md"],
+        accept_multiple_files=True # <--- 关键参数！
+    )
+    
+    if st.button("清除历史与缓存"):
+        for key in ["vector_store", "current_files", "messages"]:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
 
-# --- 主逻辑区 ---
-if uploaded_file:
-    # 🛠️ 优化 1：确保 data 目录存在，防止报错
+    # 人设选择器保持不变
+    st.divider()
+    st.header("🎭 AI 人设")
+    selected_persona_name = st.selectbox(
+        "选择回答风格",
+        options=list(PERSONAS.keys()),
+        index=0
+    )
+    selected_prompt_text = PERSONAS[selected_persona_name]
+
+# 4. 核心逻辑：多文件处理
+if uploaded_files:
     os.makedirs("data", exist_ok=True)
     
-    file_path = os.path.join("data", uploaded_file.name)
+    # 提取当前所有上传的文件名，拼成一个列表
+    current_file_names = sorted([f.name for f in uploaded_files])
     
-    # 保存文件
-    if not os.path.exists(file_path):
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        st.toast(f"文件已保存: {uploaded_file.name}", icon="✅")
-
-    # 🛠️ 优化 2：检测是否换了新文件
-    # 如果当前没有库，或者上传的文件名和内存里的不一样，就重新构建
-    is_new_file = "current_file" not in st.session_state or st.session_state["current_file"] != uploaded_file.name
+    # 🌟 【改造 2】：判断“文件组合”是否发生了变化
+    is_new_file_combo = "current_files" not in st.session_state or st.session_state["current_files"] != current_file_names
     
-    if is_new_file:
-        with st.spinner(f"正在准备文档: {uploaded_file.name} ..."):
+    if is_new_file_combo:
+        # 为了给这批文件做个唯一的缓存名，我们把所有文件名拼起来做个简易 Hash
+        combo_name = "_".join(current_file_names)[:50] # 截取前50个字符防名字过长
+        
+        with st.spinner(f"正在联合分析 {len(uploaded_files)} 个文档..."):
             try:
-                # 🌟 2. 核心修改：先尝试从本地硬盘“读档”
-                vector_store = load_vector_store(uploaded_file.name)
+                # 尝试读取多文档联合缓存
+                vector_store = load_vector_store(combo_name)
                 
-                # 🌟 3. 如果没读到档案，说明是新书，老老实实从头建库
                 if vector_store is None:
-                    st.info("首次阅读此文档，正在构建专属知识库 (这需要一点时间)...")
-                    docs = load_and_split_document(file_path)
-                    # 记得把文件名传给后厨
-                    vector_store = build_vector_store(docs, uploaded_file.name)
-                    st.success(f"✅ 新知识库构建完成并已缓存！包含 {len(docs)} 个片段。")
+                    st.info("检测到新的文档组合，正在构建联合知识库...")
+                    all_docs = [] # 准备一个大纸箱，用来装所有切碎的纸片
+                    
+                    # 遍历每一个上传的文件
+                    for uploaded_file in uploaded_files:
+                        file_path = os.path.join("data", uploaded_file.name)
+                        # 保存到硬盘
+                        if not os.path.exists(file_path):
+                            with open(file_path, "wb") as f:
+                                f.write(uploaded_file.getbuffer())
+                        
+                        # 切碎，并扔进大纸箱
+                        docs = load_and_split_document(file_path)
+                        all_docs.extend(docs) # 把列表合并
+                    
+                    # 把装满所有片段的大纸箱，一次性交给 FAISS 建库
+                    vector_store = build_vector_store(all_docs, combo_name)
+                    st.success(f"✅ 联合知识库构建完成！共融合 {len(uploaded_files)} 个文件，{len(all_docs)} 个片段。")
                 else:
-                    st.success("⚡ 发现本地知识库缓存，秒级加载成功！")
+                    st.success(f"⚡ 发现多文档联合缓存，秒级加载成功！")
 
-                # 把就绪的库放进 session_state
+                # 更新 Session
                 st.session_state["vector_store"] = vector_store
-                st.session_state["current_file"] = uploaded_file.name
+                st.session_state["current_files"] = current_file_names
                 st.session_state.messages = [] 
                 
             except Exception as e:
-                st.error(f"构建或加载失败: {e}")
+                st.error(f"构建失败: {e}")
     
-    # 提示当前正在使用的文件
     elif "vector_store" in st.session_state:
-        st.info(f"🧠 当前知识库: {st.session_state['current_file']} (已就绪)")
+        st.info(f"🧠 当前联合知识库包含 {len(current_file_names)} 个文件 (已就绪)")
 
     st.divider()
 
