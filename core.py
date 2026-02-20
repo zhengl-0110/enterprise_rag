@@ -56,7 +56,10 @@ def load_and_split_document(file_path: str) -> List[Document]:
         length_function=len, 
         add_start_index=True,
     )
-    texts = text_splitter.create_documents([page.page_content for page in pages])
+    # texts = text_splitter.create_documents([page.page_content for page in pages])
+    # 🌟 【修复 Bug】：不要用 create_documents 提取纯文本
+    # 🌟 改用 split_documents，它会自动继承原有 Document 的 metadata（包含文件名）
+    texts = text_splitter.split_documents(pages)
     logger.info(f"文档切分完成，共 {len(texts)} 个片段")
     return texts
 
