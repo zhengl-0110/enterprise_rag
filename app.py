@@ -5,8 +5,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 from prompts import PERSONAS
 
 #1 设置页面标题
-st.set_page_config(page_title="小雷的 AI 知识库助手", page_icon="🤖")
-st.title("🤖 小雷的 AI 智能问答助手")
+st.set_page_config(page_title="xiaolei的AI知识库助手", page_icon="🤖")
+st.title("xiaolei的AI问答助手")
 
 #2 --- 侧边栏：文件上传区 ---
 with st.sidebar:
