@@ -3,6 +3,9 @@ data/
 faiss_index/
 # 忽略本地 SQLite 数据库文件
 chat_history.db
+app.log
+main.py
+index.ipynb
 __pycache__/
 # 忽略环境变量文件（绝对不能泄露 API Key！）
 .env
