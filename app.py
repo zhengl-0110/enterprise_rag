@@ -1,6 +1,12 @@
 import streamlit as st
 import os
-from core import load_and_split_document, build_vector_store, stream_rag_response, load_vector_store, get_query_intent, rewrite_query
+from core import (load_and_split_document, 
+                    build_vector_store, 
+                    stream_rag_response,
+                    load_vector_store, 
+                    get_query_intent, 
+                    rewrite_query, 
+                    text_to_speech)
 from langchain_core.messages import AIMessage, HumanMessage
 from prompts import PERSONAS
 
@@ -34,6 +40,11 @@ with st.sidebar:
         index=0
     )
     selected_prompt_text = PERSONAS[selected_persona_name]
+
+    st.divider()
+    st.header("🔊 语音设置")
+    # 🌟 加一个酷炫的拨动开关
+    enable_tts = st.toggle("开启语音播报", value=False)
 
 # 4. 核心逻辑：多文件处理
 if uploaded_files:
@@ -181,6 +192,14 @@ if uploaded_files:
                     )
                 # 记入历史
                 st.session_state.messages.append({"role": "assistant", "content": response})
+
+                # 🌟 【Day 20 核心修改】：如果开启了开关，马上开始录音并播放！
+                if enable_tts:
+                    with st.spinner("🎵 正在合成专属语音..."):
+                        audio_bytes = text_to_speech(response)
+                        if audio_bytes:
+                            # Streamlit 原生的音频播放器，极其好用
+                            st.audio(audio_bytes, format="audio/wav")
             else:
                 st.error("请先等待知识库构建完成。")
 

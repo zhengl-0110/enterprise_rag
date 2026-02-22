@@ -326,4 +326,43 @@ def _describe_image(base64_image: str) -> str:
         logger.error(f"图片解析失败: {e}")
         return ""
 
+# core.py 最下方追加
+
+# 🌟 【Day 20 新增】：文本转语音 (TTS) 播报员
+def text_to_speech(text: str):
+    import dashscope
+    from dashscope.audio.tts import SpeechSynthesizer
+    import os
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # 绑定你的 API Key
+    dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
+
+    # 1. 文本清洗：去掉 Markdown 符号，防止 AI 把星号、井号也读出来
+    clean_text = text.replace("*", "").replace("#", "").replace("`", "")
+    
+    # 2. 截断保护：如果文档太长，只读前 400 个字，防止语音生成耗时过长导致卡顿
+    if len(clean_text) > 400:
+        clean_text = clean_text[:400] + "......篇幅较长，请在文本中阅读剩余内容。"
+
+    try:
+        # 呼叫阿里云的免费高保真音色 (sambert-zhiwei-v1 是一位知性女声)
+        result = SpeechSynthesizer.call(
+            model='sambert-zhiwei-v1', 
+            text=clean_text,
+            sample_rate=48000,
+            format='wav'
+        )
+        
+        # 成功拿到音频的字节流
+        if result.get_audio_data() is not None:
+            return result.get_audio_data()
+        else:
+            logger.error("语音生成返回空数据")
+            return None
+    except Exception as e:
+        logger.error(f"TTS 语音生成失败: {e}")
+        return None
+
 
