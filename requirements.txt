@@ -6,3 +6,5 @@ faiss-cpu
 pymupdf
 python-dotenv
 dashscope
+openai
+SQLAlchemy
