@@ -1,12 +1,9 @@
 import streamlit as st
 import os
-from core import (load_and_split_document, 
-                    build_vector_store, 
-                    stream_rag_response,
-                    load_vector_store, 
-                    get_query_intent, 
-                    rewrite_query, 
-                    text_to_speech)
+from core import (load_and_split_document, build_vector_store, 
+                    stream_rag_response, load_vector_store, 
+                    get_query_intent, rewrite_query, 
+                    text_to_speech, speech_to_text)
 from langchain_core.messages import AIMessage, HumanMessage
 from prompts import PERSONAS
 
@@ -111,7 +108,29 @@ if uploaded_files:
             st.markdown(message["content"])
     
     # 处理用户输入
-    prompt = st.chat_input("在这个文档里找什么？")
+    # 🌟 【Day 21 新增】：横向排列文字输入框和麦克风
+    # 💡 提示：加上 vertical_alignment="bottom" 可以让麦克风和输入框8；1比例在底部对齐，看起来更和谐！
+    col1, col2 = st.columns([11, 1], vertical_alignment="bottom")
+    
+    with col1:
+        text_prompt = st.chat_input("在这个文档里找什么？")
+    with col2:
+        # Streamlit 极度强大的原生麦克风组件！
+        audio_value = st.audio_input("🎙️ 语音提问", label_visibility="collapsed")
+    
+    # 到底是用打字的，还是用说话的？
+    prompt = text_prompt
+    
+    if audio_value:
+        with st.spinner("👂 正在努力听懂您的话..."):
+            # 取出音频的字节数据，丢给我们的速记员
+            spoken_text = speech_to_text(audio_value.getvalue())
+            if spoken_text:
+                prompt = spoken_text
+                # 把听到的内容偷偷在界面上展示一下，让用户知道 AI 没听错
+                st.toast(f"🗣️ 识别结果: {prompt}") 
+            else:
+                st.error("抱歉，没听清您说什么，请再试一次或使用文字输入。")
 
     
     if prompt:
@@ -204,4 +223,4 @@ if uploaded_files:
                 st.error("请先等待知识库构建完成。")
 
 else:
-    st.info("👈 请先在左侧上传一个 PDF 文档开始体验。")
+    st.info("👈 请先在左侧上传一个文档开始体验。")

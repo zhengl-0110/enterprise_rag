@@ -365,4 +365,29 @@ def text_to_speech(text: str):
         logger.error(f"TTS 语音生成失败: {e}")
         return None
 
+# core.py 最下方追加
+
+# 🌟 【Day 21 新增】：语音转文本 (STT) 识别器
+def speech_to_text(audio_bytes: bytes) -> str:
+    from openai import OpenAI
+    import os
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # 直接使用 OpenAI 原生客户端，连上阿里云的兼容接口
+    client = OpenAI(
+        api_key=os.getenv("DASHSCOPE_API_KEY"),
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+    
+    try:
+        # 🌟 换上你指定的 2026 最新极速语音识别大模型
+        transcript = client.audio.transcriptions.create(
+            model="qwen3-asr-flash-realtime-2026-02-10", 
+            file=("voice_input.wav", audio_bytes, "audio/wav")
+        )
+        return transcript.text
+    except Exception as e:
+        logger.error(f"语音识别失败: {e}")
+        return ""
 
