@@ -207,27 +207,29 @@ if "vector_store" in st.session_state:
 
 # 如果系统里连 vector_store 都没有，显示提示语
 else:
-    # 🌟 【移动端优化】：注入 HTML 和 JavaScript，制作可点击的唤醒卡片
+    # 🌟 【移动端优化】：CSS 动画防呆设计，跳动箭头强引导
     st.markdown("""
-        <div onclick="
-            // 魔法 JS:在页面里寻找那个隐藏的侧边栏按钮并模拟点击
-            var sidebarBtn = window.parent.document.querySelector('[data-testid=\\'collapsedControl\\']');
-            if (sidebarBtn) { 
-                sidebarBtn.click(); 
-            } else {
-                alert('侧边栏已经是展开状态啦！请直接在左侧上传文件。');
-            }
-        " style="
-            background-color: #e8f4fd; 
-            color: #0c5487; 
-            padding: 16px; 
+        <div style="
+            background-color: #f8f9fa; 
+            border-left: 8px solid #0c5487; 
+            padding: 20px; 
             border-radius: 8px; 
-            cursor: pointer; 
-            border: 1px solid #b6d4fe;
-            margin-top: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        " onmouseover="this.style.backgroundColor='#d1e7dd'" onmouseout="this.style.backgroundColor='#e8f4fd'">
-            👉 <strong>温馨提示：</strong> 手机端请点击左上角的 <code>&gt;</code> 符号，或者 <b>【直接点击本框】</b> 唤出侧边栏来上传文档！
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        ">
+            <div style="font-size: 32px; animation: bounce 2s infinite; display: inline-block;">👈</div>
+            <strong style="font-size: 20px; color: #0c5487; vertical-align: super;"> 引导：</strong>
+            <p style="margin-top: 10px; font-size: 16px; color: #555;">
+                请点击屏幕左上角的 <code style="background:#e9ecef; color:#d63384; font-size:18px; padding:4px 8px; border-radius:4px;"><b>&gt;</b></code> 符号唤出侧边栏，即可上传您的文档！
+            </p>
         </div>
+        
+        <style>
+        /* 定义一个永远在左向跳动的箭头动画 */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(0); }
+            40% { transform: translateX(-20px); }
+            60% { transform: translateX(-10px); }
+        }
+        </style>
     """, unsafe_allow_html=True)
