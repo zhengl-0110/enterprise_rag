@@ -220,7 +220,7 @@ else:
             <div style="font-size: 32px; animation: bounce 2s infinite; display: inline-block;">👈</div>
             <strong style="font-size: 20px; color: #0c5487; vertical-align: super;"> 引导：</strong>
             <p style="margin-top: 10px; font-size: 16px; color: #555;">
-                请点击屏幕左上角的 <code style="background:#e9ecef; color:#d63384; font-size:18px; padding:4px 8px; border-radius:4px;"><b>&gt;</b></code> 符号唤出侧边栏，即可上传您的文档！
+                手机端请点击屏幕左上角的 <code style="background:#e9ecef; color:#d63384; font-size:18px; padding:4px 8px; border-radius:4px;"><b>&gt;</b></code> 符号唤出侧边栏，即可上传您的文档！
             </p>
         </div>
         
