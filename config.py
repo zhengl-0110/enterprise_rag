@@ -8,6 +8,6 @@ load_dotenv()
 # 统一管理配置项
 MODEL_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 MODEL_BASE_URL = os.getenv("DASHSCOPE_BASE_URL")
-MODEL_NAME = "qwen3-max-2026-01-23"
+MODEL_NAME = "qwen3.6-flash"
 VECTOR_SEARCH_K = 5  # 检索返回的文档数量
 EMBEDDING_MODEL = "text-embedding-v3"  # 升级为 V3
